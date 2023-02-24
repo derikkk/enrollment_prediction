@@ -14,7 +14,7 @@ This was a data analysis project that I undertook in collaboration with a Presch
 2. Predict if parents will enroll their child into Nursery given they enrolled in playgroup
 3. Predict how long they will stay with Tutor Time 
 
-### Initial Pseudocode/Approach 
+## Initial Pseudocode/Approach 
 
 **Solution 1:** Logistic Regression (uses logistic function so for any input value of x, the output y is between 0 and 1 which represents binary predictions)   
   * Calculate the baseline model– a model that assumes every parent does not enroll their child
