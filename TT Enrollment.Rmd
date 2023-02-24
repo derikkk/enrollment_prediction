@@ -1,0 +1,444 @@
+---
+title: "TT Enrollment Analysis"
+author: "Derik Suria"
+date: "7/14/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Preparation
+
+```{r installing packages}
+install.packages("stringi")
+install.packages("tidyverse")
+install.packages("modelr")
+install.packages("splines")
+install.packages("haven")
+install.packages("rpart")
+install.packages("pROC")
+```
+
+```{r loading packages}
+library(tidyverse)
+library(modelr)
+library(splines)
+library(haven)
+library(rpart)
+library(pROC)
+```
+
+```{r reading files}
+enrolled <- read_csv("enroll_combined.csv") #enrolled = enrolled student list
+prospective <- read_csv("survey.csv") #prospective = survey parents who had an enrollment status
+unsure <- read_csv("enrolled?.csv") #unsure = survey parents who did not have an enrollment status
+```
+
+# Data Cleaning
+
+```{r standardizing column names}
+colnames(enrolled)
+colnames(prospective)
+prospective2 <- prospective %>% 
+  rename("Enrolled" = "Enrolled playgroup",
+         "Email" = "Email Address 電郵地址") %>% 
+  filter(!is.na(Enrolled)) 
+unsure <- unsure %>% 
+  rename("Email" = "Email Address 電郵地址")
+```
+
+```{r determining who enrolled}
+enrolled_unsure <- merge(enrolled %>% select (Email), unsure, by = "Email") 
+unique(enrolled_unsure$Email)
+enrolled_prospective <- merge(enrolled %>% select (Email), prospective2, by = "Email") 
+unique(enrolled_prospective$Email)
+
+enrolled_prospective <- enrolled_prospective %>%
+  select(-"Median minus Score")
+enrolled_unsure2 <- enrolled_unsure2 %>%
+  select(-"Total Score (45 max)")
+
+colnames(enrolled_unsure_clean)
+```
+
+```{r combining unsure + enrolled_unsure}
+enrolled_unsure2 <- rbind(unsure, enrolled_unsure)
+colnames(enrolled_unsure2)
+colnames(enrolled_prospective) #checking the column names for survey parents who enrolled
+```
+
+```{r standardizing column names part 2}
+enrolled_prospective_clean <- enrolled_prospective %>%
+  rename("1" = "Which campus(es) are you interested in? 您對哪所分校感興趣？", 
+         "2" = "Why did you choose Tutor Time's playgroup? 您為什麼選擇多多的親子班課程？",
+         "3" = "What is the most important thing you hope your child gets out of playgroup?  您最希望孩子在親子班課程得到什麼？",
+         "4" = "How many days a week do you plan on enroling your child in playgroup? 您希望替孩子報讀一星期幾堂親子班課堂？",
+         "5" = "Nursery programs in Hong Kong are very different depending on the school. 香港每間學校的幼兒園課程差異很大.",
+         "6" = "Nursery programs are responsible for teaching children social and emotional skills. 幼兒園課程應負責教導幼兒社交和情緒技巧。",
+         "7" = "Nursery programs should be conducted bilingually. 幼兒園課程應以雙語教授。",
+         "8" = "Nursery programs should mainly focus on academics. 幼兒園課程應以學業為重。",
+         "9" = "Nursery programs are essential to children's education. 幼兒園課程在幼兒教育中是必需的。",
+         "10 (Education Level)" = "What is your highest level of education? 您最高的教育級是什麼？",
+         "11" = "Parents should be hands-on in their child’s education. 家長應該親自負責幼兒的教育。",
+         "12" = "Extracurricular activities are crucial for children. 課外活動對幼兒非常重要。",
+         "13" = "Schools are responsible for developing a child’s EQ as much as their IQ. 學校應負責發展幼兒的情商和智商。",
+         "14" = "Academic achievement is the primary outcome of education. 學業成就是教育最重要的成果。",
+         "15" = "Parents should read to their children every day. 家長應該每天與幼兒一起閱讀。",
+         "16" = "Teachers should follow children’s interests instead of a fixed curriculum. 老師應該跟從幼兒的興趣而不是既定的課程。",
+         "17 (Primary School Interest)" = "Which primary schools are you interested in? 您對哪一類小學比較感興趣？", 
+         "18 (School Event Interest)" = "I am interested in joining school events. 我有興趣參加學校活動。") 
+
+```
+
+
+```{r standardizing column names part 2 ctd}
+enrolled_unsure_clean <- enrolled_unsure2 %>%
+  rename("1" = "Which campus(es) are you interested in? 您對哪所分校感興趣？", 
+         "2" = "Why did you choose Tutor Time's playgroup? 您為什麼選擇多多的親子班課程？",
+         "3" = "What is the most important thing you hope your child gets out of playgroup? 您最希望孩子在親子班課程得到什麼？",
+         "4" = "How many days a week do you plan on enroling your child in playgroup? 您希望替孩子報讀一星期幾堂親子班課堂？",
+         "5" = "Nursery programs in Hong Kong are very different depending on the school. 香港每間學校的幼兒園課程差異很大.",
+         "6" = "Nursery programs are responsible for teaching children social and emotional skills. 幼兒園課程應負責教導幼兒社交和情緒技巧。",
+         "7" = "Nursery programs should be conducted bilingually. 幼兒園課程應以雙語教授。",
+         "8" = "Nursery programs should mainly focus on academics. 幼兒園課程應以學業為重。",
+         "9" = "Nursery programs are essential to children's education. 幼兒園課程在幼兒教育中是必需的。",
+         "10 (Education Level)" = "What is your highest level of education? 您最高的教育級是什麼？",
+         "11" = "Parents should be hands-on in their child’s education. 家長應該親自負責幼兒的教育。",
+         "12" = "Extracurricular activities are crucial for children. 課外活動對幼兒非常重要。",
+         "13" = "Schools are responsible for developing a child’s EQ as much as their IQ. 學校應負責發展幼兒的情商和智商。",
+         "14" = "Academic achievement is the primary outcome of education. 學業成就是教育最重要的成果。",
+         "15" = "Parents should read to their children every day. 家長應該每天與幼兒一起閱讀。",
+         "16" = "Teachers should follow children’s interests instead of a fixed curriculum. 老師應該跟從幼兒的興趣而不是既定的課程。",
+         "17 (Primary School Interest)" = "Which primary schools are you interested in? 您對哪一類小學比較感興趣？", 
+         "18 (School Event Interest)" = "I am interested in joining school events. 我有興趣參加學校活動。",
+         "19" = "How did you hear about Tutor Time?")
+```
+
+```{r combining enrolled_unsure_clean + enrolled_prospective_clean}
+enrolled_unsure_clean %>%
+  select(-c("Timestamp", "Full Name 姓名"), -c(22:29))
+
+enrolled_prospective_clean %>%
+  select(-c("Timestamp", "Full Name 姓名"))
+
+enrolled_final <- rbind(enrolled_unsure_clean %>%
+  select(-c("Timestamp", "Full Name 姓名"), -c(23:29)), enrolled_prospective_clean %>%
+  select(-c("Timestamp", "Full Name 姓名", "Enrolled"))
+         )
+
+enrolled_final$Enrolled <- "1" #adding enrolled column back into dataframe
+```
+
+```{r turn-points-to-categorical}
+#Education Level
+enrolled_final$'10 (Education Level)'[enrolled_final$'10 (Education Level)' == "High school diploma 中學文憑"] <- 1
+enrolled_final$'10 (Education Level)'[enrolled_final$'10 (Education Level)' == "College degree 大學學位"] <- 2
+enrolled_final$'10 (Education Level)'[enrolled_final$'10 (Education Level)' == "Vocational training 職業教育"] <- 3
+enrolled_final$'10 (Education Level)'[enrolled_final$'10 (Education Level)' == "Bachelor’s degree 學士學位"] <- 4
+enrolled_final$'10 (Education Level)'[enrolled_final$'10 (Education Level)' == "Master’s degree 碩士學位"] <- 5
+enrolled_final$'10 (Education Level)'[enrolled_final$'10 (Education Level)' == "Professional degree 專業學位"] <- 6
+enrolled_final$'10 (Education Level)'[enrolled_final$'10 (Education Level)' == "Doctorate degree 博士學位"] <- 7
+
+#Most important
+enrolled_final$'3'[enrolled_final$'3' == "Improve social skills 改善社交技巧"] <- 1
+enrolled_final$'3'[enrolled_final$'3' == "Improve motor skills 改善大小肌肉技能"] <- 2
+enrolled_final$'3'[enrolled_final$'3' == "Meet new people 認識新朋友"] <- 3
+enrolled_final$'3'[enrolled_final$'3' == "Prepare for future schooling 為將來升學作準備"] <- 4
+enrolled_final$'3'[enrolled_final$'3' == "Advance into Tutor Time’s Nursery program 為入讀多多幼兒班"] <- 5
+enrolled_final$'3'[enrolled_final$'3' == "Have fun 愉快學習"] <- 6
+
+#Primary School
+enrolled_final$'17 (Primary School Interest)'[enrolled_final$'17 (Primary School Interest)' == "Local schools 本地小學"] <- 1
+enrolled_final$'17 (Primary School Interest)'[enrolled_final$'17 (Primary School Interest)' == "International schools 國際學校"] <- 2
+enrolled_final$'17 (Primary School Interest)'[enrolled_final$'17 (Primary School Interest)' == "Not in Hong Kong 不在香港升學"] <- 3
+colnames(enrolled_final)
+```
+
+## Creating Training Dataset
+
+```{r}
+prospective_clean <- prospective %>%
+  rename("Email" = "Email Address 電郵地址",
+    "1" = "Which campus(es) are you interested in? 您對哪所分校感興趣？", 
+         "2" = "Why did you choose Tutor Time's playgroup? 您為什麼選擇多多的親子班課程？",
+         "3" = "What is the most important thing you hope your child gets out of playgroup?  您最希望孩子在親子班課程得到什麼？",
+         "4" = "How many days a week do you plan on enroling your child in playgroup? 您希望替孩子報讀一星期幾堂親子班課堂？",
+         "5" = "Nursery programs in Hong Kong are very different depending on the school. 香港每間學校的幼兒園課程差異很大.",
+         "6" = "Nursery programs are responsible for teaching children social and emotional skills. 幼兒園課程應負責教導幼兒社交和情緒技巧。",
+         "7" = "Nursery programs should be conducted bilingually. 幼兒園課程應以雙語教授。",
+         "8" = "Nursery programs should mainly focus on academics. 幼兒園課程應以學業為重。",
+         "9" = "Nursery programs are essential to children's education. 幼兒園課程在幼兒教育中是必需的。",
+         "10 (Education Level)" = "What is your highest level of education? 您最高的教育級是什麼？",
+         "11" = "Parents should be hands-on in their child’s education. 家長應該親自負責幼兒的教育。",
+         "12" = "Extracurricular activities are crucial for children. 課外活動對幼兒非常重要。",
+         "13" = "Schools are responsible for developing a child’s EQ as much as their IQ. 學校應負責發展幼兒的情商和智商。",
+         "14" = "Academic achievement is the primary outcome of education. 學業成就是教育最重要的成果。",
+         "15" = "Parents should read to their children every day. 家長應該每天與幼兒一起閱讀。",
+         "16" = "Teachers should follow children’s interests instead of a fixed curriculum. 老師應該跟從幼兒的興趣而不是既定的課程。",
+         "17 (Primary School Interest)" = "Which primary schools are you interested in? 您對哪一類小學比較感興趣？") %>%
+  select(-c("Timestamp", "Full Name 姓名", "I am interested in joining school events. 我有興趣參加學校活動。"))
+```
+
+```{r creating training/test dataset}
+enroll_combined <- rbind(prospective_clean %>% 
+                           rename("Enrolled_playgroup" = "Enrolled playgroup"), 
+                         enrolled_final %>% 
+                           rename("Enrolled_playgroup" = "Enrolled") %>%
+                           select(-"18 (School Event Interest)"))
+
+enroll_combined <- enroll_combined %>%
+  rename("q1" = "1",
+         "q2" = "2",
+         "q3" = "3",
+         "q4" = "4",
+         "q5" = "5",
+         "q6" = "6",
+         "q7" = "7",
+         "q8" = "8",
+         "q9" = "9",
+         "education10" = "10 (Education Level)",
+         "q11" = "11",
+         "q12" = "12",
+         "q13" = "13",
+         "q14" = "14",
+         "q15" = "15",
+         "q16" = "16",
+         "q17" = "17 (Primary School Interest)")
+```
+
+
+```{r turn-points-to-categorical}
+#Education Level
+enroll_combined$education10[enroll_combined$education10 == "No formal education 沒有正式教育"] <- 0
+enroll_combined$education10[enroll_combined$education10 == "High school diploma 中學文憑"] <- 1
+enroll_combined$education10[enroll_combined$education10 == "College degree 大學學位"] <- 2
+enroll_combined$education10[enroll_combined$education10 =="Vocational training 職業教育"] <- 3
+enroll_combined$education10[enroll_combined$education10 == "Bachelor’s degree 學士學位"] <- 4
+enroll_combined$education10[enroll_combined$education10 == "Master’s degree 碩士學位"] <- 5
+enroll_combined$education10[enroll_combined$education10 =="Professional degree 專業學位"] <- 6
+enroll_combined$education10[enroll_combined$education10 =="Doctorate degree 博士學位"] <- 7
+
+#Most important
+enroll_combined$'q3'[enroll_combined$'q3' == "Improve social skills 改善社交技巧"] <- 1
+enroll_combined$'q3'[enroll_combined$'q3' == "Improve motor skills 改善大小肌肉技能"] <- 2
+enroll_combined$'q3'[enroll_combined$'q3' ==  "Meet new people 認識新朋友"] <- 3
+enroll_combined$'q3'[enroll_combined$'q3' ==  "Prepare for future schooling 為將來升學作準備"] <- 4
+enroll_combined$'q3'[enroll_combined$'q3' ==  "Advance into Tutor Time’s Nursery program 為入讀多多幼兒班"] <- 5
+enroll_combined$'q3'[enroll_combined$'q3' ==  "Have fun 愉快學習"] <- 6
+
+#Primary School
+enroll_combined$q17[enroll_combined$q17 == "Local schools 本地小學"] <- 1
+enroll_combined$q17[enroll_combined$q17 == "International schools 國際學校"] <- 2
+enroll_combined$q17[enroll_combined$q17 == "Not in Hong Kong 不在香港升學"] <- 3
+```
+
+```{r convert characters to double}
+enroll_combined_standard <- enroll_combined %>%
+  mutate(q3 = as.double(q3),
+         q10 = as.double(education10),
+         q17 = as.double(q17),
+         Enrolled_playgroup = as.double(Enrolled_playgroup)) %>% 
+  filter(!is.na(q3)) 
+```
+
+# Model 1: Logistic Regression
+
+## Create the vector of N uniform random variables: gp
+
+```{r}
+# Use nrow to get the number of rows in mpg (N) and print it
+N <- nrow(enroll_combined_standard)
+
+# Calculate how many rows 75% of N should be and print it
+(target <- round(N * 0.75))
+gp <- runif(N)
+```
+
+## Use gp to create the training set: mpg_train (75% of data) and mpg_test (25% of data)
+
+```{r}
+enroll_train <- enroll_combined_standard[gp < 0.75, ]
+
+enroll_test <- enroll_combined_standard[gp >= 0.75, ]
+```
+
+## Use nrow() to examine mpg_train and mpg_test
+
+```{r}
+nrow(enroll_train)
+     
+nrow(enroll_test)
+```
+
+## Building Enrollment Model
+```{r model 1: logistic regression (no interactions)}
+enrollment_model <- glm(as.numeric(Enrolled_playgroup) ~ q3 + q4 + q5 + q6 + q7 + q8 + q9 + q10 + q11 + q12 + q13 + q14 + q15 + q16 + q17, data = enroll_train, family = "binomial")
+
+summary(enrollment_model)
+```
+
+```{r using model 1 to make predictions}
+enroll_train$enroll_probs <- predict(enrollment_model, type = "response")
+
+enroll_train$enroll_pred <- ifelse(enroll_train$enroll_probs > 0.51, 1, 0) 
+
+mean(enroll_train$Enrolled_playgroup == enroll_train$enroll_pred)
+  
+mean(as.numeric(enroll_train$Enrolled_playgroup))
+```
+
+```{r model 1: logistic regression (no interactions)}
+enrollment_model <- glm(as.numeric(Enrolled_playgroup) ~ q7 + q5 + q4 + q11 + q16, data = enroll_train, family = "binomial")
+
+summary(enrollment_model)
+```
+
+```{r using model 1 to make predictions}
+enroll_train$enroll_probs <- predict(enrollment_model, type = "response")
+
+enroll_train$enroll_pred <- ifelse(enroll_train$enroll_probs > 0.5, 1, 0) 
+
+mean(enroll_train$Enrolled_playgroup == enroll_train$enroll_pred)
+  
+mean(as.numeric(enroll_train$Enrolled_playgroup))
+```
+
+```{r calculating ROC curves and AUC}
+# Create a ROC curve
+ROC <- roc(enroll_train$Enrolled_playgroup, enroll_train$enroll_probs)
+
+# Plot the ROC curve
+plot(ROC, col = "blue")
+
+# Calculate the area under the curve (AUC)
+auc(ROC)
+```
+
+```{r model 2: logistic regression (with interactions)}
+enrollment_model_int <- glm(as.numeric(Enrolled_playgroup) ~ q3 * q4 * q7 * q8 * q13 * q16, data = enroll_combined_standard, family = "binomial")
+
+summary(enrollment_model_int)
+```
+
+```{r using model 2 to make predictions}
+enroll_combined_standard$enroll_probs <- predict(enrollment_model_int, type = "response")
+
+enroll_combined_standard$enroll_pred <- ifelse(enroll_combined_standard$enroll_probs > 0.5, 1, 0) 
+  mean(enroll_combined_standard$Enrolled_playgroup == enroll_combined_standard$enroll_pred)
+  
+mean(as.numeric(enroll_combined_standard$Enrolled_playgroup))
+```
+
+```{r calculating ROC curves and AUC}
+# Create a ROC curve
+ROC <- roc(enroll_combined_standard$Enrolled_playgroup, enroll_combined_standard$enroll_probs)
+
+# Plot the ROC curve
+plot(ROC, col = "blue")
+
+# Calculate the area under the curve (AUC)
+auc(ROC)
+```
+
+```{r model 3: stepwise regression (forward)}
+# Specify a null model with no predictors
+null_model <- glm(as.numeric(Enrolled_playgroup) ~ 1, data = enroll_combined_standard, family = "binomial")
+
+# Specify the full model using all of the potential predictors
+full_model <- glm(as.numeric(Enrolled_playgroup) ~ q3 + q4 + q5 + q6 + q7 + q8 + q9 + q10 + q11 + q12 + q13 + q14 + q15 + q16 + q17, data = enroll_combined_standard, family = "binomial")
+
+# Use a forward stepwise algorithm to build a parsimonious model
+step_model <- step(null_model, scope = list(lower = null_model, upper = full_model), direction = "forward")
+
+# Estimate the stepwise donation probability
+step_prob <- predict(step_model, type = "response")
+
+ROC_step <- roc(enroll_combined_standard$Enrolled_playgroup, step_prob)
+plot(ROC, col = "red")
+auc(ROC)
+```
+
+```{r using model 3 to make predictions}
+enroll_combined_standard$enroll_probs <- predict(step_model, type = "response")
+
+enroll_combined_standard$enroll_pred <- ifelse(enroll_combined_standard$enroll_probs > 0.51, 1, 0) 
+  mean(enroll_combined_standard$Enrolled_playgroup == enroll_combined_standard$enroll_pred)
+  
+mean(as.numeric(enroll_combined_standard$Enrolled_playgroup))
+```
+
+```{r model 4: logistic regression (mixed)}
+enrollment_model_mix <- glm(as.numeric(Enrolled_playgroup) ~ q5 * q9 * q3 * q10 * q16 * q17, data = enroll_combined_standard, family = "binomial")
+
+summary(enrollment_model_mix)
+```
+
+```{r using model 4 to make predictions}
+enroll_combined_standard$enroll_probs <- predict(enrollment_model_mix, type = "response")
+
+enroll_combined_standard$enroll_pred <- ifelse(enroll_combined_standard$enroll_probs > 0.498, 1, 0) 
+  mean(enroll_combined_standard$Enrolled_playgroup == enroll_combined_standard$enroll_pred)
+  
+mean(as.numeric(enroll_combined_standard$Enrolled_playgroup))
+```
+
+```{r calculating ROC curves and AUC}
+# Create a ROC curve
+ROC <- roc(enroll_combined_standard$Enrolled_playgroup, enroll_combined_standard$enroll_probs)
+
+# Plot the ROC curve
+plot(ROC, col = "blue")
+
+# Calculate the area under the curve (AUC)
+auc(ROC)
+```
+
+```{r model 5: logistic regression (mixed)}
+enrollment_model_mix2 <- glm(as.numeric(Enrolled_playgroup) ~ q5 * q9 * q3 * q10 * q16 * q17 * q12 *q13, data = enroll_combined_standard, family = "binomial")
+
+summary(enrollment_model_mix)
+```
+
+```{r using model 5 to make predictions}
+enroll_combined_standard$enroll_probs <- predict(enrollment_model_mix2, type = "response")
+
+enroll_combined_standard$enroll_pred <- ifelse(enroll_combined_standard$enroll_probs > 0.5, 1, 0) 
+  mean(enroll_combined_standard$Enrolled_playgroup == enroll_combined_standard$enroll_pred)
+  
+mean(as.numeric(enroll_combined_standard$Enrolled_playgroup))
+```
+
+```{r calculating ROC curves and AUC}
+# Create a ROC curve
+ROC <- roc(enroll_combined_standard$Enrolled_playgroup, enroll_combined_standard$enroll_probs)
+
+# Plot the ROC curve
+plot(ROC, col = "blue")
+
+# Calculate the area under the curve (AUC)
+auc(ROC)
+```
+
+```{r validating model 5 using test/train data}
+enrollment_model_mix3 <- glm(as.numeric(Enrolled_playgroup) ~ q5 * q9 + q3 + q10 * q16 + q17, data = enroll_train, family = "binomial")
+
+summary(enrollment_model_mix)
+```
+
+```{r using model 5 to make predictions for test/train}
+enroll_test$enroll_probs <- predict(enrollment_model_mix, newdata = enroll_test, type = "response")
+
+enroll_test$enroll_pred <- ifelse(enroll_test$enroll_probs > 0.5, 1, 0) 
+  mean(enroll_test$Enrolled_playgroup == enroll_test$enroll_pred)
+  
+mean(as.numeric(enroll_combined_standard$Enrolled_playgroup))
+```
+
+```{r evaluating models using deviance & pseudo R^2}
+install.packages("sigr")
+library(sigr)
+
+wrapChiSqTest(step_model)
+```
+
+
