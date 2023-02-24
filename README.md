@@ -1,6 +1,6 @@
 # Prospective Parent Enrollment Prediction
 
-This was a data analysis project that I undertook in collaboration with a Preschool in Hong Kong. The goal was to create a enrollment model that could help predict the likelihood that prospective parents would enroll into the preschool. By creating an accurate model, I could save the preschool tens, or even hundreds of hours in labor hours spent on chasing cold leads. Using this model, the preschool administrators would could more easily, and systematically prioritize which parents to direct their efforts on. 
+This was a data analysis project that I undertook in collaboration with a Preschool in Hong Kong. The goal was to create a enrollment model that could help predict the likelihood that prospective parents would enroll into the preschool. By creating an accurate model, I could save the preschool tens, or even hundreds of hours in labor hours spent on chasing cold leads. Using this model, the preschool administrators could more easily, and systematically prioritize which parents to direct their efforts on. 
 
 ## Data Provided  
 1. Prospective Playgroup Enrollment Survey 2019 - 2022 **(Messy Data)**
