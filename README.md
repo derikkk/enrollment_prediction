@@ -26,7 +26,7 @@ This was a data analysis project that I undertook in collaboration with a Presch
   * Too high of a threshold value excludes too many parents that will enroll 
   * Too low of a threshold value includes too many parents that would not enroll
 Code Notes: 
-'''
+''' R
 Model ← glm(enrollment ~ predictor 1 + predictor 2 + predictor 3, data = dataset, family = “binomial)
 Prob ←  predict(model, test_dataset, type = “response”)
 Pred ← ifelse(prob > 0.50, 1, 0) #convert probabilities to binomial predictions/outcomes
@@ -38,7 +38,7 @@ Data Cleaning Needed:
   * Cross-check between enrolled students list and prospective Playgroup enrollment to see if the parents enrolled 
   * Combine each school’s dataset using excel 
 Code Notes: 
-'''
+''' R
 Merge(dataframe1 = combined_TT_enrolled, dataframe2 = playgroup_prospective, by = c(“email”, “name”)) #will output parents who enrolled from prospective playgroup survey 
 '''
 
